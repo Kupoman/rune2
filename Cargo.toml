@@ -1,0 +1,4 @@
+[package]
+name = "rune"
+version = "0.1.0"
+authors = ["Daniel Stokes <kupomail@gmail.com>", "Nathan Vegdahl <cessen@cessen.com>"]
