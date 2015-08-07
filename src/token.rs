@@ -1,3 +1,7 @@
+#![allow(dead_code)]
+#![allow(non_camel_case_types)]
+
+#[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub struct Token<'a> {
     pub token_type: TokenType,
     pub text: &'a str,
@@ -6,6 +10,7 @@ pub struct Token<'a> {
     pub byte_offset: usize,
 }
 
+#[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub enum TokenType {
     // Catch-all
     Unknown,
