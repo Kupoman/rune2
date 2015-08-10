@@ -25,7 +25,7 @@ pub enum TokenType {
 
     // Literals
     LIT_Int,
-    LIT_Float,
+    LIT_Real,
     LIT_String,
     LIT_RawString,
 
@@ -35,15 +35,15 @@ pub enum TokenType {
     // Punctuation
     NewLine,
     LParen,
-    RParent,
+    RParen,
     LSquare,
     RSquare,
     LCurly,
     RCurly,
-    At,
     Comma,
-    Period,
     Colon,
+    At,
+    Period,
     BackTick,
     Dollar,
 

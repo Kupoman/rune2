@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use std::collections::HashMap;
 use regex::Regex;
 use token::{Token, TokenType};
 
@@ -46,12 +47,35 @@ impl<'a> Lexer<'a> {
         // in a newline as well.
         let re_newlines = Regex::new(r"[\r\n](?:[\r\n \t]*[\r\n])*").unwrap();
 
+        // A comment
+        let re_comment = Regex::new(r"#[^\r\n]*(?:\r\n|\r|\n)").unwrap();
+        
         // Literals
-        //let re_int = Regex::new(r"[0-9]+").unwrap();
-        //let re_real = Regex::new(r"[0-9]+\.[0-9]+").unwrap();
+        let re_int = Regex::new(r"[0-9]+").unwrap();
+        let re_real = Regex::new(r"[0-9]+\.[0-9]+").unwrap();
 
-        // Other
-        let re_ident = Regex::new(r"[a-zA-Z_][a-zA-Z0-9_]+").unwrap();
+        // Identifiers
+        let re_ident_or_keyword = Regex::new(r"[a-zA-Z][a-zA-Z0-9_]+").unwrap();
+        let re_ident_generic = Regex::new(r"_[a-zA-Z][a-zA-Z0-9_]+").unwrap();
+        
+        // Operators
+        let re_operator = Regex::new(r"[-+/*%|&!~]+").unwrap();
+        
+        //===================================
+        // Set up map for single-character tokens
+        let mut single_byte_tokens = HashMap::new();
+        single_byte_tokens.insert("(", TokenType::LParen);
+        single_byte_tokens.insert(")", TokenType::RParen);
+        single_byte_tokens.insert("[", TokenType::LSquare);
+        single_byte_tokens.insert("]", TokenType::RSquare);
+        single_byte_tokens.insert("{", TokenType::LCurly);
+        single_byte_tokens.insert("}", TokenType::RCurly);
+        single_byte_tokens.insert(",", TokenType::Comma);
+        single_byte_tokens.insert(":", TokenType::Colon);
+        single_byte_tokens.insert("@", TokenType::At);
+        single_byte_tokens.insert(".", TokenType::Period);
+        single_byte_tokens.insert("`", TokenType::BackTick);
+        single_byte_tokens.insert("$", TokenType::Dollar);
         
         
         //==================================
@@ -90,13 +114,74 @@ impl<'a> Lexer<'a> {
                 continue;
             }
             
+            // Comment
+            // TODO: store doc comments
+            else if let Some((0, n)) = re_comment.find(self.text) {
+                bytes_consumed = n;
+                
+                // Handle state updates specially
+                self.current_line += 1;
+                self.current_column = 0;
+                self.current_byte_offset += bytes_consumed;
+                self.text = &self.text[bytes_consumed..];
+                continue;
+            }
+            
             // White space
             else if let Some((0, n)) = re_whitespace.find(self.text) {
                 bytes_consumed = n;
             }
             
+            // Punctuation
+            else if let Some(tt) = single_byte_tokens.get(&self.text[0..1]) {
+                bytes_consumed = 1;
+                self.tokens.push(Token {
+                    token_type: *tt,
+                    text: &self.text[0..1],
+                    line: self.current_line,
+                    column: self.current_column,
+                    byte_offset: self.current_byte_offset,
+                });
+            }
+            
+            // Operators
+            else if let Some((0, n)) = re_operator.find(self.text) {
+                bytes_consumed = n;
+                self.tokens.push(Token {
+                    token_type: TokenType::Operator,
+                    text: &self.text[0..1],
+                    line: self.current_line,
+                    column: self.current_column,
+                    byte_offset: self.current_byte_offset,
+                });
+            }
+            
+            // Real number literal
+            else if let Some((0, n)) = re_real.find(self.text) {
+                bytes_consumed = n;
+                self.tokens.push(Token {
+                    token_type: TokenType::LIT_Real,
+                    text: &self.text[0..1],
+                    line: self.current_line,
+                    column: self.current_column,
+                    byte_offset: self.current_byte_offset,
+                });
+            }
+            
+            // Integer literal
+            else if let Some((0, n)) = re_int.find(self.text) {
+                bytes_consumed = n;
+                self.tokens.push(Token {
+                    token_type: TokenType::LIT_Int,
+                    text: &self.text[0..1],
+                    line: self.current_line,
+                    column: self.current_column,
+                    byte_offset: self.current_byte_offset,
+                });
+            }
+            
             // Identifier or keyword
-            else if let Some((0, n)) = re_ident.find(self.text) {
+            else if let Some((0, n)) = re_ident_or_keyword.find(self.text) {
                 bytes_consumed = n;
                 
                 let tt = match &self.text[0..n] {
@@ -140,11 +225,12 @@ impl<'a> Lexer<'a> {
                 });
             }
             
-            // 'var' keyword
-            else if let Some((0, n)) = re_ident.find(self.text) {
+            // Identifier of a generic parameter
+            else if let Some((0, n)) = re_ident_generic.find(self.text) {
                 bytes_consumed = n;
+                
                 self.tokens.push(Token {
-                    token_type: TokenType::Identifier,
+                    token_type: TokenType::IdentifierGeneric,
                     text: &self.text[0..n],
                     line: self.current_line,
                     column: self.current_column,
@@ -181,5 +267,61 @@ mod tests {
         
         assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
         assert_eq!(tokens[1].token_type, TokenType::Identifier);
+        assert_eq!(tokens[2].token_type, TokenType::EOF);
+    }
+    
+    #[test]
+    fn newlines() {
+        let tokens = lex_str("var\n \n   \n hello");
+        
+        assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
+        assert_eq!(tokens[1].token_type, TokenType::NewLine);
+        assert_eq!(tokens[2].token_type, TokenType::Identifier);
+        assert_eq!(tokens[3].token_type, TokenType::EOF);
+    }
+    
+    #[test]
+    fn punctuation() {
+        let tokens = lex_str("{}()[]@.,:`$");
+        
+        assert_eq!(tokens[0].token_type, TokenType::LCurly);
+        assert_eq!(tokens[1].token_type, TokenType::RCurly);
+        assert_eq!(tokens[2].token_type, TokenType::LParen);
+        assert_eq!(tokens[3].token_type, TokenType::RParen);
+        assert_eq!(tokens[4].token_type, TokenType::LSquare);
+        assert_eq!(tokens[5].token_type, TokenType::RSquare);
+        assert_eq!(tokens[6].token_type, TokenType::At);
+        assert_eq!(tokens[7].token_type, TokenType::Period);
+        assert_eq!(tokens[8].token_type, TokenType::Comma);
+        assert_eq!(tokens[9].token_type, TokenType::Colon);
+        assert_eq!(tokens[10].token_type, TokenType::BackTick);
+        assert_eq!(tokens[11].token_type, TokenType::Dollar);
+        assert_eq!(tokens[12].token_type, TokenType::EOF);
+    }
+    
+    #[test]
+    fn operator() {
+        let tokens = lex_str("- + / * % | & ! ~ ++-*&|%");
+        
+        assert_eq!(tokens[0].token_type, TokenType::Operator);
+        assert_eq!(tokens[1].token_type, TokenType::Operator);
+        assert_eq!(tokens[2].token_type, TokenType::Operator);
+        assert_eq!(tokens[3].token_type, TokenType::Operator);
+        assert_eq!(tokens[4].token_type, TokenType::Operator);
+        assert_eq!(tokens[5].token_type, TokenType::Operator);
+        assert_eq!(tokens[6].token_type, TokenType::Operator);
+        assert_eq!(tokens[7].token_type, TokenType::Operator);
+        assert_eq!(tokens[8].token_type, TokenType::Operator);
+        assert_eq!(tokens[9].token_type, TokenType::Operator);
+        assert_eq!(tokens[10].token_type, TokenType::EOF);
+    }
+    
+    #[test]
+    fn ints_and_reals() {
+        let tokens = lex_str("123 12.3");
+        
+        assert_eq!(tokens[0].token_type, TokenType::LIT_Int);
+        assert_eq!(tokens[1].token_type, TokenType::LIT_Real);
+        assert_eq!(tokens[2].token_type, TokenType::EOF);
     }
 }
