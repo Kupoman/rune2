@@ -52,6 +52,7 @@ impl<'a> Lexer<'a> {
         // Literals
         let re_int = Regex::new(r"[0-9]+").unwrap();
         let re_real = Regex::new(r"[0-9]+\.[0-9]+").unwrap();
+        let re_raw_string_start = Regex::new("'+\"").unwrap();
 
         // Identifiers
         let re_ident_or_keyword = Regex::new(r"[a-zA-Z][a-zA-Z0-9_]+").unwrap();
@@ -183,6 +184,47 @@ impl<'a> Lexer<'a> {
                 });
             }
             
+            // String literal
+            else if self.text.starts_with("\"") {
+                let (newline_count, trailing_txt, txt) = self.lex_string_literal();
+                bytes_consumed = txt.len();
+                self.tokens.push(Token {
+                    token_type: TokenType::LIT_String,
+                    text: &self.text[0..bytes_consumed],
+                    line: self.current_line,
+                    column: self.current_column,
+                    byte_offset: self.current_byte_offset,
+                });
+                
+                // Handle state updates specially
+                self.current_line += newline_count;
+                self.current_column = trailing_txt.len() as u32; // TODO: actually base this on grapheme count
+                self.current_byte_offset += bytes_consumed;
+                self.text = &self.text[bytes_consumed..];
+                continue;
+            }
+            
+            // Raw string literal
+            else if let Some((0, _)) = re_raw_string_start.find(self.text) {
+                let (newline_count, trailing_txt, txt) = self.lex_raw_string_literal();
+                bytes_consumed = txt.len();
+                self.tokens.push(Token {
+                    token_type: TokenType::LIT_RawString,
+                    text: &self.text[0..bytes_consumed],
+                    line: self.current_line,
+                    column: self.current_column,
+                    byte_offset: self.current_byte_offset,
+                });
+                
+                // Handle state updates specially
+                self.current_line += newline_count;
+                self.current_column = trailing_txt.len() as u32; // TODO: actually base this on grapheme count
+                self.current_byte_offset += bytes_consumed;
+                self.text = &self.text[bytes_consumed..];
+                continue;
+            }
+            
+            
             // Identifier or keyword
             else if let Some((0, n)) = re_ident_or_keyword.find(self.text) {
                 bytes_consumed = n;
@@ -244,7 +286,7 @@ impl<'a> Lexer<'a> {
             // Unknown input text
             else {
                 println!("{:?}", self.text);
-                panic!("Error: unknown text!");
+                panic!("Error: unknown text at line {} row {}", self.current_line+1, self.current_column);
             }
             
             // Update state
@@ -256,6 +298,89 @@ impl<'a> Lexer<'a> {
         return self.tokens;
     }
     
+    
+    // TODO: error out when the string is not properly closed (i.e. reached EOF)
+    fn lex_string_literal(&mut self) -> (u32, &'a str, &'a str) {
+        // Find extent of string literal
+        let mut last_was_esc = true;
+        let mut ending_byte = 0;
+        for (b, c) in self.text.char_indices() {
+            ending_byte = b;
+            if last_was_esc == true {
+                last_was_esc = false;
+            }
+            else {
+                if c == '\\' {
+                    last_was_esc = true;
+                }
+                else if c == '"' {
+                    break;
+                }
+            }
+        }
+        ending_byte += 1;
+        
+        // Figure out how many newlines are in the string literal,
+        // and what the trailing string is.
+        let re_newline = Regex::new(r"(\r\n|\r|\n)").unwrap(); // TODO: re-use same RE from lex().
+        let string_text = &self.text[0..ending_byte];
+        let newline_count = re_newline.find_iter(string_text).count() as u32;
+        let trailing_text = if let Some(t) = re_newline.split(string_text).last() {t} else {string_text};
+        
+        return (newline_count, trailing_text, string_text);
+    }
+    
+    
+    // TODO: error out when the string is not properly closed (i.e. reached EOF)
+    fn lex_raw_string_literal(&mut self) -> (u32, &'a str, &'a str) {
+        // Find extent of string literal
+        let mut stage = 0i32;
+        let mut start_tick_count = 0;
+        let mut tick_count = 0;
+        let mut ending_byte = 0;
+        for (b, c) in self.text.char_indices() {
+            ending_byte = b;
+            if stage == 0 {
+                // Get the starting tick count
+                if c == '\'' {
+                    start_tick_count += 1;
+                }
+                else {
+                    stage = 1;
+                }
+            }
+            else if stage == 1 {
+                // Look for double-quotes
+                if c == '"' {
+                    stage = 2;
+                }
+            }
+            else if stage == 2 {
+                // Count closing ticks
+                if c == '\'' {
+                    tick_count += 1;
+                    if tick_count == start_tick_count {
+                        break;
+                    }
+                }
+                else {
+                    tick_count = 0;
+                    stage = 1;
+                }
+            }
+        }
+        
+        ending_byte += 1;
+        
+        // Figure out how many newlines are in the string literal,
+        // and what the trailing string is.
+        let re_newline = Regex::new(r"(\r\n|\r|\n)").unwrap(); // TODO: re-use same RE from lex().
+        let string_text = &self.text[0..ending_byte];
+        let newline_count = re_newline.find_iter(string_text).count() as u32;
+        let trailing_text = if let Some(t) = re_newline.split(string_text).last() {t} else {string_text};
+        
+        return (newline_count, trailing_text, string_text);
+    }
     
 }
 
@@ -350,5 +475,35 @@ mod tests {
         assert_eq!(tokens[2].token_type, TokenType::DocComment);
         assert_eq!(tokens[3].token_type, TokenType::NewLine);
         assert_eq!(tokens[4].token_type, TokenType::EOF);
+    }
+    
+    #[test]
+    fn string_literal_1() {
+        let tokens = lex_str("var\"Suddenly there's \\\"a string!\"hello");
+        
+        assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
+        assert_eq!(tokens[1].token_type, TokenType::LIT_String);
+        assert_eq!(tokens[2].token_type, TokenType::Identifier);
+        assert_eq!(tokens[3].token_type, TokenType::EOF);
+    }
+    
+    #[test]
+    fn raw_string_literal_1() {
+        let tokens = lex_str("var'\"Suddenly there's \"a raw string!\"'hello");
+        
+        assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
+        assert_eq!(tokens[1].token_type, TokenType::LIT_RawString);
+        assert_eq!(tokens[2].token_type, TokenType::Identifier);
+        assert_eq!(tokens[3].token_type, TokenType::EOF);
+    }
+    
+    #[test]
+    fn raw_string_literal_2() {
+        let tokens = lex_str("var''\"Suddenly there's \"'a raw string!\"''hello");
+        
+        assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
+        assert_eq!(tokens[1].token_type, TokenType::LIT_RawString);
+        assert_eq!(tokens[2].token_type, TokenType::Identifier);
+        assert_eq!(tokens[3].token_type, TokenType::EOF);
     }
 }
