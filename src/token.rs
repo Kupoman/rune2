@@ -10,6 +10,7 @@ pub struct Token<'a> {
     pub byte_offset: usize,
 }
 
+
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub enum TokenType {
     // Catch-all
@@ -30,7 +31,7 @@ pub enum TokenType {
     LIT_RawString,
 
     // Documentation string
-    DocString,
+    DocComment,
 
     // Punctuation
     NewLine,

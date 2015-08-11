@@ -9,7 +9,6 @@ pub fn lex_str<'a>(text: &'a str) -> Vec<Token<'a>> {
     Lexer::new(text).lex()
 }
 
-
 ////////////////////////////////////////////////
 struct Lexer<'a> {
     text: &'a str,
@@ -30,6 +29,7 @@ impl<'a> Lexer<'a> {
         }
     }
     
+    
     // Lexing consumes the lexer
     fn lex(mut self) -> Vec<Token<'a>> {
         //==================================
@@ -41,14 +41,13 @@ impl<'a> Lexer<'a> {
         let re_whitespace = Regex::new(r"[ \t]+").unwrap();
 
         // A single newline
-        let re_newline = Regex::new(r"(?:\r\n|\r|\n)").unwrap();
-        
-        // A newline followed by any number of newlines and whitespace, ending
-        // in a newline as well.
-        let re_newlines = Regex::new(r"[\r\n](?:[\r\n \t]*[\r\n])*").unwrap();
+        let re_newline = Regex::new(r"(\r\n|\r|\n)").unwrap();
 
         // A comment
-        let re_comment = Regex::new(r"#[^\r\n]*(?:\r\n|\r|\n)").unwrap();
+        let re_comment = Regex::new(r"#[^\r\n]*").unwrap();
+        
+        // A doc comment
+        let re_doc_comment = Regex::new(r"#:[^\r\n]*").unwrap();
         
         // Literals
         let re_int = Regex::new(r"[0-9]+").unwrap();
@@ -96,7 +95,7 @@ impl<'a> Lexer<'a> {
             }
             
             // Newline
-            else if let Some((0, n)) = re_newlines.find(self.text) {
+            else if let Some((0, n)) = re_newline.find(self.text) {
                 bytes_consumed = n;
                 self.tokens.push(Token {
                     token_type: TokenType::NewLine,
@@ -107,24 +106,28 @@ impl<'a> Lexer<'a> {
                 });
                 
                 // Handle state updates specially
-                self.current_line += re_newline.find_iter(&self.text[0..n]).count() as u32;
+                self.current_line += 1;
                 self.current_column = 0;
                 self.current_byte_offset += bytes_consumed;
                 self.text = &self.text[bytes_consumed..];
                 continue;
             }
             
+            // Doc comment
+            else if let Some((0, n)) = re_doc_comment.find(self.text) {
+                bytes_consumed = n;
+                self.tokens.push(Token {
+                    token_type: TokenType::DocComment,
+                    text: &self.text[0..1],
+                    line: self.current_line,
+                    column: self.current_column,
+                    byte_offset: self.current_byte_offset,
+                });
+            }
+            
             // Comment
-            // TODO: store doc comments
             else if let Some((0, n)) = re_comment.find(self.text) {
                 bytes_consumed = n;
-                
-                // Handle state updates specially
-                self.current_line += 1;
-                self.current_column = 0;
-                self.current_byte_offset += bytes_consumed;
-                self.text = &self.text[bytes_consumed..];
-                continue;
             }
             
             // White space
@@ -240,6 +243,7 @@ impl<'a> Lexer<'a> {
             
             // Unknown input text
             else {
+                println!("{:?}", self.text);
                 panic!("Error: unknown text!");
             }
             
@@ -262,7 +266,7 @@ mod tests {
     use token::TokenType;
     
     #[test]
-    fn t1() {
+    fn idents_and_keywords() {
         let tokens = lex_str("var hello");
         
         assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
@@ -276,8 +280,10 @@ mod tests {
         
         assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
         assert_eq!(tokens[1].token_type, TokenType::NewLine);
-        assert_eq!(tokens[2].token_type, TokenType::Identifier);
-        assert_eq!(tokens[3].token_type, TokenType::EOF);
+        assert_eq!(tokens[2].token_type, TokenType::NewLine);
+        assert_eq!(tokens[3].token_type, TokenType::NewLine);
+        assert_eq!(tokens[4].token_type, TokenType::Identifier);
+        assert_eq!(tokens[5].token_type, TokenType::EOF);
     }
     
     #[test]
@@ -323,5 +329,26 @@ mod tests {
         assert_eq!(tokens[0].token_type, TokenType::LIT_Int);
         assert_eq!(tokens[1].token_type, TokenType::LIT_Real);
         assert_eq!(tokens[2].token_type, TokenType::EOF);
+    }
+    
+    #[test]
+    fn comments() {
+        let tokens = lex_str("var hello# How's it going?\n");
+        
+        assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
+        assert_eq!(tokens[1].token_type, TokenType::Identifier);
+        assert_eq!(tokens[2].token_type, TokenType::NewLine);
+        assert_eq!(tokens[3].token_type, TokenType::EOF);
+    }
+    
+    #[test]
+    fn doc_comments() {
+        let tokens = lex_str("var hello#: How's it going?\n");
+        
+        assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
+        assert_eq!(tokens[1].token_type, TokenType::Identifier);
+        assert_eq!(tokens[2].token_type, TokenType::DocComment);
+        assert_eq!(tokens[3].token_type, TokenType::NewLine);
+        assert_eq!(tokens[4].token_type, TokenType::EOF);
     }
 }
