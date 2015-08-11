@@ -4,6 +4,7 @@ extern crate rustc_serialize;
 
 mod token;
 mod lexer;
+mod parser;
 
 use std::path::Path;
 use std::fs::File;
@@ -52,5 +53,5 @@ fn main() {
     let tokens = lex_str(&text[..]);
     
     // Print tokens
-    println!("{:?}", tokens);
+    //println!("{:?}", tokens);
 }

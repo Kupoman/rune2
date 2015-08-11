@@ -285,7 +285,7 @@ impl<'a> Lexer<'a> {
             
             // Unknown input text
             else {
-                println!("{:?}", self.text);
+                //println!("{:?}", self.text);
                 panic!("Error: unknown text at line {} column {}", self.current_line+1, self.current_column);
             }
             
