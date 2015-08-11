@@ -55,11 +55,11 @@ impl<'a> Lexer<'a> {
         let re_raw_string_start = Regex::new("'+\"").unwrap();
 
         // Identifiers
-        let re_ident_or_keyword = Regex::new(r"[a-zA-Z][a-zA-Z0-9_]+").unwrap();
-        let re_ident_generic = Regex::new(r"_[a-zA-Z][a-zA-Z0-9_]+").unwrap();
+        let re_ident_or_keyword = Regex::new(r"[a-zA-Z][a-zA-Z0-9_]*").unwrap();
+        let re_ident_generic = Regex::new(r"_[a-zA-Z][a-zA-Z0-9_]*").unwrap();
         
         // Operators
-        let re_operator = Regex::new(r"[-+/*%|&!~]+").unwrap();
+        let re_operator = Regex::new(r"[-+/*%|&!~=<>]+").unwrap();
         
         //===================================
         // Set up map for single-character tokens
@@ -286,7 +286,7 @@ impl<'a> Lexer<'a> {
             // Unknown input text
             else {
                 println!("{:?}", self.text);
-                panic!("Error: unknown text at line {} row {}", self.current_line+1, self.current_column);
+                panic!("Error: unknown text at line {} column {}", self.current_line+1, self.current_column);
             }
             
             // Update state
@@ -391,8 +391,17 @@ mod tests {
     use token::TokenType;
     
     #[test]
-    fn idents_and_keywords() {
+    fn idents_and_keywords_1() {
         let tokens = lex_str("var hello");
+        
+        assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
+        assert_eq!(tokens[1].token_type, TokenType::Identifier);
+        assert_eq!(tokens[2].token_type, TokenType::EOF);
+    }
+    
+    #[test]
+    fn idents_and_keywords_2() {
+        let tokens = lex_str("var a");
         
         assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
         assert_eq!(tokens[1].token_type, TokenType::Identifier);

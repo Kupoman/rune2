@@ -5,3 +5,5 @@ authors = ["Daniel Stokes <kupomail@gmail.com>", "Nathan Vegdahl <cessen@cessen.
 
 [dependencies]
 regex = "0.1.41"
+rustc-serialize = "0.3.*"
+docopt = "0.6.*"
