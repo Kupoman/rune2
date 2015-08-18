@@ -2,6 +2,7 @@ extern crate regex;
 extern crate docopt;
 extern crate rustc_serialize;
 
+mod source_span;
 mod token;
 mod lexer;
 mod parser;

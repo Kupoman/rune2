@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 use regex::Regex;
+use source_span::SourceSpan;
 use token::{Token, TokenType};
 
 /// Lexes a string slice into an vector of tokens
@@ -11,7 +12,8 @@ pub fn lex_str<'a>(text: &'a str) -> Vec<Token<'a>> {
 
 ////////////////////////////////////////////////
 struct Lexer<'a> {
-    text: &'a str,
+    remaining_text: &'a str,
+    full_text: &'a str,
     current_line: u32,
     current_column: u32,
     current_byte_offset: usize,
@@ -21,7 +23,8 @@ struct Lexer<'a> {
 impl<'a> Lexer<'a> {
     fn new(text: &'a str) -> Lexer<'a> {
         Lexer {
-            text: text,
+            remaining_text: text,
+            full_text: text,
             current_line: 0,
             current_column: 0,
             current_byte_offset: 0,
@@ -84,152 +87,179 @@ impl<'a> Lexer<'a> {
             let mut bytes_consumed;
             
             // End of file
-            if self.text.len() == 0 {
+            if self.remaining_text.len() == 0 {
                 self.tokens.push(Token {
                     token_type: TokenType::EOF,
-                    text: self.text,
-                    line: self.current_line,
-                    column: self.current_column,
-                    byte_offset: self.current_byte_offset,
+                    source: SourceSpan {
+                        span: self.remaining_text,
+                        full_source_text: self.full_text,
+                        byte_offset: self.current_byte_offset,
+                        line: self.current_line,
+                        column: self.current_column,
+                    },
                 });
                 break;
             }
             
             // Newline
-            else if let Some((0, n)) = re_newline.find(self.text) {
+            else if let Some((0, n)) = re_newline.find(self.remaining_text) {
                 bytes_consumed = n;
                 self.tokens.push(Token {
                     token_type: TokenType::NewLine,
-                    text: &self.text[0..n],
-                    line: self.current_line,
-                    column: self.current_column,
-                    byte_offset: self.current_byte_offset,
+                    source: SourceSpan {
+                        span: &self.remaining_text[0..n],
+                        full_source_text: self.full_text,
+                        byte_offset: self.current_byte_offset,
+                        line: self.current_line,
+                        column: self.current_column,
+                    },
                 });
                 
                 // Handle state updates specially
                 self.current_line += 1;
                 self.current_column = 0;
                 self.current_byte_offset += bytes_consumed;
-                self.text = &self.text[bytes_consumed..];
+                self.remaining_text = &self.remaining_text[bytes_consumed..];
                 continue;
             }
             
             // Doc comment
-            else if let Some((0, n)) = re_doc_comment.find(self.text) {
+            else if let Some((0, n)) = re_doc_comment.find(self.remaining_text) {
                 bytes_consumed = n;
                 self.tokens.push(Token {
                     token_type: TokenType::DocComment,
-                    text: &self.text[0..1],
-                    line: self.current_line,
-                    column: self.current_column,
-                    byte_offset: self.current_byte_offset,
+                    source: SourceSpan {
+                        span: &self.remaining_text[0..n],
+                        full_source_text: self.full_text,
+                        byte_offset: self.current_byte_offset,
+                        line: self.current_line,
+                        column: self.current_column,
+                    },
                 });
             }
             
             // Comment
-            else if let Some((0, n)) = re_comment.find(self.text) {
+            else if let Some((0, n)) = re_comment.find(self.remaining_text) {
                 bytes_consumed = n;
             }
             
             // White space
-            else if let Some((0, n)) = re_whitespace.find(self.text) {
+            else if let Some((0, n)) = re_whitespace.find(self.remaining_text) {
                 bytes_consumed = n;
             }
             
             // Punctuation
-            else if let Some(tt) = single_byte_tokens.get(&self.text[0..1]) {
+            else if let Some(tt) = single_byte_tokens.get(&self.remaining_text[0..1]) {
                 bytes_consumed = 1;
                 self.tokens.push(Token {
                     token_type: *tt,
-                    text: &self.text[0..1],
-                    line: self.current_line,
-                    column: self.current_column,
-                    byte_offset: self.current_byte_offset,
+                    source: SourceSpan {
+                        span: &self.remaining_text[0..1],
+                        full_source_text: self.full_text,
+                        byte_offset: self.current_byte_offset,
+                        line: self.current_line,
+                        column: self.current_column,
+                    },
                 });
             }
             
             // Operators
-            else if let Some((0, n)) = re_operator.find(self.text) {
+            else if let Some((0, n)) = re_operator.find(self.remaining_text) {
                 bytes_consumed = n;
                 self.tokens.push(Token {
                     token_type: TokenType::Operator,
-                    text: &self.text[0..1],
-                    line: self.current_line,
-                    column: self.current_column,
-                    byte_offset: self.current_byte_offset,
+                    source: SourceSpan {
+                        span: &self.remaining_text[0..n],
+                        full_source_text: self.full_text,
+                        byte_offset: self.current_byte_offset,
+                        line: self.current_line,
+                        column: self.current_column,
+                    },
                 });
             }
             
             // Real number literal
-            else if let Some((0, n)) = re_real.find(self.text) {
+            else if let Some((0, n)) = re_real.find(self.remaining_text) {
                 bytes_consumed = n;
                 self.tokens.push(Token {
                     token_type: TokenType::LIT_Real,
-                    text: &self.text[0..1],
-                    line: self.current_line,
-                    column: self.current_column,
-                    byte_offset: self.current_byte_offset,
+                    source: SourceSpan {
+                        span: &self.remaining_text[0..n],
+                        full_source_text: self.full_text,
+                        byte_offset: self.current_byte_offset,
+                        line: self.current_line,
+                        column: self.current_column,
+                    },
                 });
             }
             
             // Integer literal
-            else if let Some((0, n)) = re_int.find(self.text) {
+            else if let Some((0, n)) = re_int.find(self.remaining_text) {
                 bytes_consumed = n;
                 self.tokens.push(Token {
                     token_type: TokenType::LIT_Int,
-                    text: &self.text[0..1],
-                    line: self.current_line,
-                    column: self.current_column,
-                    byte_offset: self.current_byte_offset,
+                    source: SourceSpan {
+                        span: &self.remaining_text[0..n],
+                        full_source_text: self.full_text,
+                        byte_offset: self.current_byte_offset,
+                        line: self.current_line,
+                        column: self.current_column,
+                    },
                 });
             }
             
             // String literal
-            else if self.text.starts_with("\"") {
+            else if self.remaining_text.starts_with("\"") {
                 let (newline_count, trailing_txt, txt) = self.lex_string_literal();
                 bytes_consumed = txt.len();
                 self.tokens.push(Token {
                     token_type: TokenType::LIT_String,
-                    text: &self.text[0..bytes_consumed],
-                    line: self.current_line,
-                    column: self.current_column,
-                    byte_offset: self.current_byte_offset,
+                    source: SourceSpan {
+                        span: &self.remaining_text[0..bytes_consumed],
+                        full_source_text: self.full_text,
+                        byte_offset: self.current_byte_offset,
+                        line: self.current_line,
+                        column: self.current_column,
+                    },
                 });
                 
                 // Handle state updates specially
                 self.current_line += newline_count;
                 self.current_column = trailing_txt.len() as u32; // TODO: actually base this on grapheme count
                 self.current_byte_offset += bytes_consumed;
-                self.text = &self.text[bytes_consumed..];
+                self.remaining_text = &self.remaining_text[bytes_consumed..];
                 continue;
             }
             
             // Raw string literal
-            else if let Some((0, _)) = re_raw_string_start.find(self.text) {
+            else if let Some((0, _)) = re_raw_string_start.find(self.remaining_text) {
                 let (newline_count, trailing_txt, txt) = self.lex_raw_string_literal();
                 bytes_consumed = txt.len();
                 self.tokens.push(Token {
                     token_type: TokenType::LIT_RawString,
-                    text: &self.text[0..bytes_consumed],
-                    line: self.current_line,
-                    column: self.current_column,
-                    byte_offset: self.current_byte_offset,
+                    source: SourceSpan {
+                        span: &self.remaining_text[0..bytes_consumed],
+                        full_source_text: self.full_text,
+                        byte_offset: self.current_byte_offset,
+                        line: self.current_line,
+                        column: self.current_column,
+                    },
                 });
                 
                 // Handle state updates specially
                 self.current_line += newline_count;
                 self.current_column = trailing_txt.len() as u32; // TODO: actually base this on grapheme count
                 self.current_byte_offset += bytes_consumed;
-                self.text = &self.text[bytes_consumed..];
+                self.remaining_text = &self.remaining_text[bytes_consumed..];
                 continue;
             }
             
             
             // Identifier or keyword
-            else if let Some((0, n)) = re_ident_or_keyword.find(self.text) {
+            else if let Some((0, n)) = re_ident_or_keyword.find(self.remaining_text) {
                 bytes_consumed = n;
                 
-                let tt = match &self.text[0..n] {
+                let tt = match &self.remaining_text[0..n] {
                     "namespace" => TokenType::KEY_Namespace,
                     "pub" => TokenType::KEY_Pub,
                     "unsafe" => TokenType::KEY_Unsafe,
@@ -263,36 +293,42 @@ impl<'a> Lexer<'a> {
                 
                 self.tokens.push(Token {
                     token_type: tt,
-                    text: &self.text[0..n],
-                    line: self.current_line,
-                    column: self.current_column,
-                    byte_offset: self.current_byte_offset,
+                    source: SourceSpan {
+                        span: &self.remaining_text[0..n],
+                        full_source_text: self.full_text,
+                        byte_offset: self.current_byte_offset,
+                        line: self.current_line,
+                        column: self.current_column,
+                    },
                 });
             }
             
             // Identifier of a generic parameter
-            else if let Some((0, n)) = re_ident_generic.find(self.text) {
+            else if let Some((0, n)) = re_ident_generic.find(self.remaining_text) {
                 bytes_consumed = n;
                 
                 self.tokens.push(Token {
                     token_type: TokenType::IdentifierGeneric,
-                    text: &self.text[0..n],
-                    line: self.current_line,
-                    column: self.current_column,
-                    byte_offset: self.current_byte_offset,
+                    source: SourceSpan {
+                        span: &self.remaining_text[0..n],
+                        full_source_text: self.full_text,
+                        byte_offset: self.current_byte_offset,
+                        line: self.current_line,
+                        column: self.current_column,
+                    },
                 });
             }
             
             // Unknown input text
             else {
-                //println!("{:?}", self.text);
+                //println!("{:?}", self.remaining_text);
                 panic!("Error: unknown text at line {} column {}", self.current_line+1, self.current_column);
             }
             
             // Update state
             self.current_column += bytes_consumed as u32; // TODO: actually base this on grapheme count
             self.current_byte_offset += bytes_consumed;
-            self.text = &self.text[bytes_consumed..];
+            self.remaining_text = &self.remaining_text[bytes_consumed..];
         }
         
         return self.tokens;
@@ -304,7 +340,7 @@ impl<'a> Lexer<'a> {
         // Find extent of string literal
         let mut last_was_esc = true;
         let mut ending_byte = 0;
-        for (b, c) in self.text.char_indices() {
+        for (b, c) in self.remaining_text.char_indices() {
             ending_byte = b;
             if last_was_esc == true {
                 last_was_esc = false;
@@ -323,7 +359,7 @@ impl<'a> Lexer<'a> {
         // Figure out how many newlines are in the string literal,
         // and what the trailing string is.
         let re_newline = Regex::new(r"(\r\n|\r|\n)").unwrap(); // TODO: re-use same RE from lex().
-        let string_text = &self.text[0..ending_byte];
+        let string_text = &self.remaining_text[0..ending_byte];
         let newline_count = re_newline.find_iter(string_text).count() as u32;
         let trailing_text = if let Some(t) = re_newline.split(string_text).last() {t} else {string_text};
         
@@ -338,7 +374,7 @@ impl<'a> Lexer<'a> {
         let mut start_tick_count = 0;
         let mut tick_count = 0;
         let mut ending_byte = 0;
-        for (b, c) in self.text.char_indices() {
+        for (b, c) in self.remaining_text.char_indices() {
             ending_byte = b;
             if stage == 0 {
                 // Get the starting tick count
@@ -375,7 +411,7 @@ impl<'a> Lexer<'a> {
         // Figure out how many newlines are in the string literal,
         // and what the trailing string is.
         let re_newline = Regex::new(r"(\r\n|\r|\n)").unwrap(); // TODO: re-use same RE from lex().
-        let string_text = &self.text[0..ending_byte];
+        let string_text = &self.remaining_text[0..ending_byte];
         let newline_count = re_newline.find_iter(string_text).count() as u32;
         let trailing_text = if let Some(t) = re_newline.split(string_text).last() {t} else {string_text};
         
@@ -396,6 +432,7 @@ mod tests {
         
         assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
         assert_eq!(tokens[1].token_type, TokenType::Identifier);
+        assert_eq!(tokens[1].source.span, "hello");
         assert_eq!(tokens[2].token_type, TokenType::EOF);
     }
     
@@ -405,6 +442,7 @@ mod tests {
         
         assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
         assert_eq!(tokens[1].token_type, TokenType::Identifier);
+        assert_eq!(tokens[1].source.span, "a");
         assert_eq!(tokens[2].token_type, TokenType::EOF);
     }
     
@@ -417,6 +455,7 @@ mod tests {
         assert_eq!(tokens[2].token_type, TokenType::NewLine);
         assert_eq!(tokens[3].token_type, TokenType::NewLine);
         assert_eq!(tokens[4].token_type, TokenType::Identifier);
+        assert_eq!(tokens[4].source.span, "hello");
         assert_eq!(tokens[5].token_type, TokenType::EOF);
     }
     
@@ -444,15 +483,35 @@ mod tests {
         let tokens = lex_str("- + / * % | & ! ~ ++-*&|%");
         
         assert_eq!(tokens[0].token_type, TokenType::Operator);
+        assert_eq!(tokens[0].source.span, "-");
+        
         assert_eq!(tokens[1].token_type, TokenType::Operator);
+        assert_eq!(tokens[1].source.span, "+");
+        
         assert_eq!(tokens[2].token_type, TokenType::Operator);
+        assert_eq!(tokens[2].source.span, "/");
+        
         assert_eq!(tokens[3].token_type, TokenType::Operator);
+        assert_eq!(tokens[3].source.span, "*");
+        
         assert_eq!(tokens[4].token_type, TokenType::Operator);
+        assert_eq!(tokens[4].source.span, "%");
+        
         assert_eq!(tokens[5].token_type, TokenType::Operator);
+        assert_eq!(tokens[5].source.span, "|");
+        
         assert_eq!(tokens[6].token_type, TokenType::Operator);
+        assert_eq!(tokens[6].source.span, "&");
+        
         assert_eq!(tokens[7].token_type, TokenType::Operator);
+        assert_eq!(tokens[7].source.span, "!");
+        
         assert_eq!(tokens[8].token_type, TokenType::Operator);
+        assert_eq!(tokens[8].source.span, "~");
+        
         assert_eq!(tokens[9].token_type, TokenType::Operator);
+        assert_eq!(tokens[9].source.span, "++-*&|%");
+        
         assert_eq!(tokens[10].token_type, TokenType::EOF);
     }
     
@@ -461,7 +520,9 @@ mod tests {
         let tokens = lex_str("123 12.3");
         
         assert_eq!(tokens[0].token_type, TokenType::LIT_Int);
+        assert_eq!(tokens[0].source.span, "123");
         assert_eq!(tokens[1].token_type, TokenType::LIT_Real);
+        assert_eq!(tokens[1].source.span, "12.3");
         assert_eq!(tokens[2].token_type, TokenType::EOF);
     }
     
@@ -482,6 +543,7 @@ mod tests {
         assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
         assert_eq!(tokens[1].token_type, TokenType::Identifier);
         assert_eq!(tokens[2].token_type, TokenType::DocComment);
+        assert_eq!(tokens[2].source.span, "#: How's it going?");
         assert_eq!(tokens[3].token_type, TokenType::NewLine);
         assert_eq!(tokens[4].token_type, TokenType::EOF);
     }
@@ -492,6 +554,7 @@ mod tests {
         
         assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
         assert_eq!(tokens[1].token_type, TokenType::LIT_String);
+        assert_eq!(tokens[1].source.span, "\"Suddenly there's \\\"a string!\"");
         assert_eq!(tokens[2].token_type, TokenType::Identifier);
         assert_eq!(tokens[3].token_type, TokenType::EOF);
     }
@@ -502,6 +565,7 @@ mod tests {
         
         assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
         assert_eq!(tokens[1].token_type, TokenType::LIT_RawString);
+        assert_eq!(tokens[1].source.span, "'\"Suddenly there's \"a raw string!\"'");
         assert_eq!(tokens[2].token_type, TokenType::Identifier);
         assert_eq!(tokens[3].token_type, TokenType::EOF);
     }
@@ -512,6 +576,7 @@ mod tests {
         
         assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
         assert_eq!(tokens[1].token_type, TokenType::LIT_RawString);
+        assert_eq!(tokens[1].source.span, "''\"Suddenly there's \"'a raw string!\"''");
         assert_eq!(tokens[2].token_type, TokenType::Identifier);
         assert_eq!(tokens[3].token_type, TokenType::EOF);
     }

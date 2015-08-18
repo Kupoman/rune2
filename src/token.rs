@@ -1,13 +1,12 @@
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
 
+use source_span::SourceSpan;
+
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub struct Token<'a> {
     pub token_type: TokenType,
-    pub text: &'a str,
-    pub line: u32,
-    pub column: u32,
-    pub byte_offset: usize,
+    pub source: SourceSpan<'a>,
 }
 
 
