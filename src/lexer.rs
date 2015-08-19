@@ -212,7 +212,12 @@ impl<'a> Lexer<'a> {
 
                 // Handle state updates specially
                 self.current_line += newline_count;
-                self.current_column = trailing_txt.len() as u32; // TODO: actually base this on grapheme count
+                if newline_count > 0 {
+                    self.current_column = trailing_txt.len() as u32; // TODO: actually base this on grapheme count
+                }
+                else {
+                    self.current_column += txt.len() as u32; // TODO: actually base this on grapheme count
+                }
                 self.current_byte_offset += bytes_consumed;
                 self.remaining_text = &self.remaining_text[bytes_consumed..];
                 continue;
@@ -234,7 +239,12 @@ impl<'a> Lexer<'a> {
                 
                 // Handle state updates specially
                 self.current_line += newline_count;
-                self.current_column = trailing_txt.len() as u32; // TODO: actually base this on grapheme count
+                if newline_count > 0 {
+                    self.current_column = trailing_txt.len() as u32; // TODO: actually base this on grapheme count
+                }
+                else {
+                    self.current_column += txt.len() as u32; // TODO: actually base this on grapheme count
+                }
                 self.current_byte_offset += bytes_consumed;
                 self.remaining_text = &self.remaining_text[bytes_consumed..];
                 continue;
@@ -425,7 +435,6 @@ mod tests {
                 column: 0
             }
         ));
-        
         assert_eq!(tokens[1], Token::Identifier(
             SourceSpan {
                 span: "hello",
@@ -435,152 +444,334 @@ mod tests {
                 column: 4
             }
         ));
-        
         assert_eq!(tokens[2], Token::EOF);
     }
     
-    //#[test]
-    //fn idents_and_keywords_2() {
-    //    let tokens = lex_str("var a");
-    //    
-    //    assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
-    //    assert_eq!(tokens[1].token_type, TokenType::Identifier);
-    //    assert_eq!(tokens[1].source.span, "a");
-    //    assert_eq!(tokens[2].token_type, TokenType::EOF);
-    //}
-    //
-    //#[test]
-    //fn newlines() {
-    //    let tokens = lex_str("var\n \n   \n hello");
-    //    
-    //    assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
-    //    assert_eq!(tokens[1].token_type, TokenType::NewLine);
-    //    assert_eq!(tokens[2].token_type, TokenType::NewLine);
-    //    assert_eq!(tokens[3].token_type, TokenType::NewLine);
-    //    assert_eq!(tokens[4].token_type, TokenType::Identifier);
-    //    assert_eq!(tokens[4].source.span, "hello");
-    //    assert_eq!(tokens[5].token_type, TokenType::EOF);
-    //}
-    //
-    //#[test]
-    //fn punctuation() {
-    //    let tokens = lex_str("{}()[]@.,:`$");
-    //    
-    //    assert_eq!(tokens[0].token_type, TokenType::LCurly);
-    //    assert_eq!(tokens[1].token_type, TokenType::RCurly);
-    //    assert_eq!(tokens[2].token_type, TokenType::LParen);
-    //    assert_eq!(tokens[3].token_type, TokenType::RParen);
-    //    assert_eq!(tokens[4].token_type, TokenType::LSquare);
-    //    assert_eq!(tokens[5].token_type, TokenType::RSquare);
-    //    assert_eq!(tokens[6].token_type, TokenType::At);
-    //    assert_eq!(tokens[7].token_type, TokenType::Period);
-    //    assert_eq!(tokens[8].token_type, TokenType::Comma);
-    //    assert_eq!(tokens[9].token_type, TokenType::Colon);
-    //    assert_eq!(tokens[10].token_type, TokenType::BackTick);
-    //    assert_eq!(tokens[11].token_type, TokenType::Dollar);
-    //    assert_eq!(tokens[12].token_type, TokenType::EOF);
-    //}
-    //
-    //#[test]
-    //fn operator() {
-    //    let tokens = lex_str("- + / * % | & ! ~ ++-*&|%");
-    //    
-    //    assert_eq!(tokens[0].token_type, TokenType::Operator);
-    //    assert_eq!(tokens[0].source.span, "-");
-    //    
-    //    assert_eq!(tokens[1].token_type, TokenType::Operator);
-    //    assert_eq!(tokens[1].source.span, "+");
-    //    
-    //    assert_eq!(tokens[2].token_type, TokenType::Operator);
-    //    assert_eq!(tokens[2].source.span, "/");
-    //    
-    //    assert_eq!(tokens[3].token_type, TokenType::Operator);
-    //    assert_eq!(tokens[3].source.span, "*");
-    //    
-    //    assert_eq!(tokens[4].token_type, TokenType::Operator);
-    //    assert_eq!(tokens[4].source.span, "%");
-    //    
-    //    assert_eq!(tokens[5].token_type, TokenType::Operator);
-    //    assert_eq!(tokens[5].source.span, "|");
-    //    
-    //    assert_eq!(tokens[6].token_type, TokenType::Operator);
-    //    assert_eq!(tokens[6].source.span, "&");
-    //    
-    //    assert_eq!(tokens[7].token_type, TokenType::Operator);
-    //    assert_eq!(tokens[7].source.span, "!");
-    //    
-    //    assert_eq!(tokens[8].token_type, TokenType::Operator);
-    //    assert_eq!(tokens[8].source.span, "~");
-    //    
-    //    assert_eq!(tokens[9].token_type, TokenType::Operator);
-    //    assert_eq!(tokens[9].source.span, "++-*&|%");
-    //    
-    //    assert_eq!(tokens[10].token_type, TokenType::EOF);
-    //}
-    //
-    //#[test]
-    //fn ints_and_reals() {
-    //    let tokens = lex_str("123 12.3");
-    //    
-    //    assert_eq!(tokens[0].token_type, TokenType::LIT_Int);
-    //    assert_eq!(tokens[0].source.span, "123");
-    //    assert_eq!(tokens[1].token_type, TokenType::LIT_Real);
-    //    assert_eq!(tokens[1].source.span, "12.3");
-    //    assert_eq!(tokens[2].token_type, TokenType::EOF);
-    //}
-    //
-    //#[test]
-    //fn comments() {
-    //    let tokens = lex_str("var hello# How's it going?\n");
-    //    
-    //    assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
-    //    assert_eq!(tokens[1].token_type, TokenType::Identifier);
-    //    assert_eq!(tokens[2].token_type, TokenType::NewLine);
-    //    assert_eq!(tokens[3].token_type, TokenType::EOF);
-    //}
-    //
-    //#[test]
-    //fn doc_comments() {
-    //    let tokens = lex_str("var hello#: How's it going?\n");
-    //    
-    //    assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
-    //    assert_eq!(tokens[1].token_type, TokenType::Identifier);
-    //    assert_eq!(tokens[2].token_type, TokenType::DocComment);
-    //    assert_eq!(tokens[2].source.span, "#: How's it going?");
-    //    assert_eq!(tokens[3].token_type, TokenType::NewLine);
-    //    assert_eq!(tokens[4].token_type, TokenType::EOF);
-    //}
-    //
-    //#[test]
-    //fn string_literal_1() {
-    //    let tokens = lex_str("var\"Suddenly there's \\\"a string!\"hello");
-    //    
-    //    assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
-    //    assert_eq!(tokens[1].token_type, TokenType::LIT_String);
-    //    assert_eq!(tokens[1].source.span, "\"Suddenly there's \\\"a string!\"");
-    //    assert_eq!(tokens[2].token_type, TokenType::Identifier);
-    //     assert_eq!(tokens[3].token_type, TokenType::EOF);
-    // }
-    // 
-    // #[test]
-    // fn raw_string_literal_1() {
-    //     let tokens = lex_str("var'\"Suddenly there's \"a raw string!\"'hello");
-    //     
-    //     assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
-    //     assert_eq!(tokens[1].token_type, TokenType::LIT_RawString);
-    //     assert_eq!(tokens[1].source.span, "'\"Suddenly there's \"a raw string!\"'");
-    //     assert_eq!(tokens[2].token_type, TokenType::Identifier);
-    //     assert_eq!(tokens[3].token_type, TokenType::EOF);
-    // }
-    // 
-    // #[test]
-    // fn raw_string_literal_2() {
-    //     let tokens = lex_str("var''\"Suddenly there's \"'a raw string!\"''hello");
-    //     
-    //     assert_eq!(tokens[0].token_type, TokenType::KEY_Var);
-    //     assert_eq!(tokens[1].token_type, TokenType::LIT_RawString);
-    //     assert_eq!(tokens[1].source.span, "''\"Suddenly there's \"'a raw string!\"''");
-    //     assert_eq!(tokens[2].token_type, TokenType::Identifier);
-    //     assert_eq!(tokens[3].token_type, TokenType::EOF);
-    // }
+    #[test]
+    fn idents_and_keywords_2() {
+        let text = "var a";
+        let tokens = lex_str(text);
+        
+        assert_eq!(tokens[0], Token::KEY_Var(
+            SourceSpan {
+                span: "var",
+                full_source_text: text,
+                byte_offset: 0,
+                line: 0,
+                column: 0
+            }
+        ));
+        assert_eq!(tokens[1], Token::Identifier(
+            SourceSpan {
+                span: "a",
+                full_source_text: text,
+                byte_offset: 4,
+                line: 0,
+                column: 4
+            }
+        ));
+        assert_eq!(tokens[2], Token::EOF);
+    }
+    
+    #[test]
+    fn newlines() {
+        let text = "var\n \n   \n hello";
+        let tokens = lex_str(text);
+        
+        assert_eq!(tokens[0], Token::KEY_Var(
+            SourceSpan {
+                span: "var",
+                full_source_text: text,
+                byte_offset: 0,
+                line: 0,
+                column: 0
+            }
+        ));
+        assert_eq!(tokens[1], Token::NewLine(
+            SourceSpan {
+                span: "\n",
+                full_source_text: text,
+                byte_offset: 3,
+                line: 0,
+                column: 3
+            }
+        ));
+        assert_eq!(tokens[2], Token::NewLine(
+            SourceSpan {
+                span: "\n",
+                full_source_text: text,
+                byte_offset: 5,
+                line: 1,
+                column: 1
+            }
+        ));
+        assert_eq!(tokens[3], Token::NewLine(
+            SourceSpan {
+                span: "\n",
+                full_source_text: text,
+                byte_offset: 9,
+                line: 2,
+                column: 3
+            }
+        ));
+        assert_eq!(tokens[4], Token::Identifier(
+            SourceSpan {
+                span: "hello",
+                full_source_text: text,
+                byte_offset: 11,
+                line: 3,
+                column: 1
+            }
+        ));
+        assert_eq!(tokens[5], Token::EOF);
+    }
+    
+    #[test]
+    fn punctuation() {
+        let text = "{}()[]@.,:`$";
+        let tokens = lex_str(text);
+        
+        assert_eq!(tokens[0], Token::LCurly(SourceSpan {span: "{", full_source_text: text, byte_offset: 0, line: 0, column: 0}));
+        assert_eq!(tokens[1], Token::RCurly(SourceSpan {span: "}", full_source_text: text, byte_offset: 1, line: 0, column: 1}));
+        assert_eq!(tokens[2], Token::LParen(SourceSpan {span: "(", full_source_text: text, byte_offset: 2, line: 0, column: 2}));
+        assert_eq!(tokens[3], Token::RParen(SourceSpan {span: ")", full_source_text: text, byte_offset: 3, line: 0, column: 3}));
+        assert_eq!(tokens[4], Token::LSquare(SourceSpan {span: "[", full_source_text: text, byte_offset: 4, line: 0, column: 4}));
+        assert_eq!(tokens[5], Token::RSquare(SourceSpan {span: "]", full_source_text: text, byte_offset: 5, line: 0, column: 5}));
+        assert_eq!(tokens[6], Token::At(SourceSpan {span: "@", full_source_text: text, byte_offset: 6, line: 0, column: 6}));
+        assert_eq!(tokens[7], Token::Period(SourceSpan {span: ".", full_source_text: text, byte_offset: 7, line: 0, column: 7}));
+        assert_eq!(tokens[8], Token::Comma(SourceSpan {span: ",", full_source_text: text, byte_offset: 8, line: 0, column: 8}));
+        assert_eq!(tokens[9], Token::Colon(SourceSpan {span: ":", full_source_text: text, byte_offset: 9, line: 0, column: 9}));
+        assert_eq!(tokens[10], Token::BackTick(SourceSpan {span: "`", full_source_text: text, byte_offset: 10, line: 0, column: 10}));
+        assert_eq!(tokens[11], Token::Dollar(SourceSpan {span: "$", full_source_text: text, byte_offset: 11, line: 0, column: 11}));
+        assert_eq!(tokens[12], Token::EOF);
+    }
+    
+    #[test]
+    fn operator() {
+        let text = "- + / * % | & ! ~ ++-*&|%";
+        let tokens = lex_str(text);
+        
+        assert_eq!(tokens[0], Token::Operator(SourceSpan {span: "-", full_source_text: text, byte_offset: 0, line: 0, column: 0}));
+        assert_eq!(tokens[1], Token::Operator(SourceSpan {span: "+", full_source_text: text, byte_offset: 2, line: 0, column: 2}));
+        assert_eq!(tokens[2], Token::Operator(SourceSpan {span: "/", full_source_text: text, byte_offset: 4, line: 0, column: 4}));
+        assert_eq!(tokens[3], Token::Operator(SourceSpan {span: "*", full_source_text: text, byte_offset: 6, line: 0, column: 6}));
+        assert_eq!(tokens[4], Token::Operator(SourceSpan {span: "%", full_source_text: text, byte_offset: 8, line: 0, column: 8}));
+        assert_eq!(tokens[5], Token::Operator(SourceSpan {span: "|", full_source_text: text, byte_offset: 10, line: 0, column: 10}));
+        assert_eq!(tokens[6], Token::Operator(SourceSpan {span: "&", full_source_text: text, byte_offset: 12, line: 0, column: 12}));
+        assert_eq!(tokens[7], Token::Operator(SourceSpan {span: "!", full_source_text: text, byte_offset: 14, line: 0, column: 14}));
+        assert_eq!(tokens[8], Token::Operator(SourceSpan {span: "~", full_source_text: text, byte_offset: 16, line: 0, column: 16}));
+        assert_eq!(tokens[9], Token::Operator(SourceSpan {span: "++-*&|%", full_source_text: text, byte_offset: 18, line: 0, column: 18}));
+        assert_eq!(tokens[10], Token::EOF);
+    }
+    
+    #[test]
+    fn ints_and_reals() {
+        let text = "123 12.3";
+        let tokens = lex_str(text);
+        
+        assert_eq!(tokens[0], Token::LIT_Int(
+            SourceSpan {
+                span: "123",
+                full_source_text: text,
+                byte_offset: 0,
+                line: 0,
+                column: 0
+            }
+        ));
+        assert_eq!(tokens[1], Token::LIT_Real(
+            SourceSpan {
+                span: "12.3",
+                full_source_text: text,
+                byte_offset: 4,
+                line: 0,
+                column: 4
+            }
+        ));
+        assert_eq!(tokens[2], Token::EOF);
+    }
+    
+    #[test]
+    fn comments() {
+        let text = "var hello# How's it going?\n";
+        let tokens = lex_str(text);
+        
+        assert_eq!(tokens[0], Token::KEY_Var(
+            SourceSpan {
+                span: "var",
+                full_source_text: text,
+                byte_offset: 0,
+                line: 0,
+                column: 0
+            }
+        ));
+        assert_eq!(tokens[1], Token::Identifier(
+            SourceSpan {
+                span: "hello",
+                full_source_text: text,
+                byte_offset: 4,
+                line: 0,
+                column: 4
+            }
+        ));
+        assert_eq!(tokens[2], Token::NewLine(
+            SourceSpan {
+                span: "\n",
+                full_source_text: text,
+                byte_offset: 26,
+                line: 0,
+                column: 26
+            }
+        ));
+        assert_eq!(tokens[3], Token::EOF);
+    }
+    
+    #[test]
+    fn doc_comments() {
+        let text = "var hello#: How's it going?\n";
+        let tokens = lex_str(text);
+        
+        assert_eq!(tokens[0], Token::KEY_Var(
+            SourceSpan {
+                span: "var",
+                full_source_text: text,
+                byte_offset: 0,
+                line: 0,
+                column: 0
+            }
+        ));
+        assert_eq!(tokens[1], Token::Identifier(
+            SourceSpan {
+                span: "hello",
+                full_source_text: text,
+                byte_offset: 4,
+                line: 0,
+                column: 4
+            }
+        ));
+        assert_eq!(tokens[2], Token::DocComment(
+            SourceSpan {
+                span: "#: How's it going?",
+                full_source_text: text,
+                byte_offset: 9,
+                line: 0,
+                column: 9
+            }
+        ));
+        assert_eq!(tokens[3], Token::NewLine(
+            SourceSpan {
+                span: "\n",
+                full_source_text: text,
+                byte_offset: 27,
+                line: 0,
+                column: 27
+            }
+        ));
+        assert_eq!(tokens[4], Token::EOF);
+
+    }
+    
+    #[test]
+    fn string_literal_1() {
+        let text = r#"var"Suddenly there's \"a string!"hello"#;
+        let tokens = lex_str(text);
+        
+        assert_eq!(tokens[0], Token::KEY_Var(
+            SourceSpan {
+                span: "var",
+                full_source_text: text,
+                byte_offset: 0,
+                line: 0,
+                column: 0
+            }
+        ));
+        assert_eq!(tokens[1], Token::LIT_String(
+            SourceSpan {
+                span: r#""Suddenly there's \"a string!""#,
+                full_source_text: text,
+                byte_offset: 3,
+                line: 0,
+                column: 3
+            }
+        ));
+        assert_eq!(tokens[2], Token::Identifier(
+            SourceSpan {
+                span: "hello",
+                full_source_text: text,
+                byte_offset: 33,
+                line: 0,
+                column: 33
+            }
+        ));
+        assert_eq!(tokens[3], Token::EOF);
+    }
+     
+    #[test]
+    fn raw_string_literal_1() {
+        let text = r#"var'"Suddenly there's "a raw string!"'hello"#;
+        let tokens = lex_str(text);
+        
+        assert_eq!(tokens[0], Token::KEY_Var(
+            SourceSpan {
+                span: "var",
+                full_source_text: text,
+                byte_offset: 0,
+                line: 0,
+                column: 0
+            }
+        ));
+        assert_eq!(tokens[1], Token::LIT_RawString(
+            SourceSpan {
+                span: r#"'"Suddenly there's "a raw string!"'"#,
+                full_source_text: text,
+                byte_offset: 3,
+                line: 0,
+                column: 3
+            }
+        ));
+        assert_eq!(tokens[2], Token::Identifier(
+            SourceSpan {
+                span: "hello",
+                full_source_text: text,
+                byte_offset: 38,
+                line: 0,
+                column: 38
+            }
+        ));
+        assert_eq!(tokens[3], Token::EOF);
+    }
+    
+    #[test]
+    fn raw_string_literal_2() {
+        let text = r#"var''"Suddenly there's "'a raw string!"''hello"#;
+        let tokens = lex_str(text);
+        
+        assert_eq!(tokens[0], Token::KEY_Var(
+            SourceSpan {
+                span: "var",
+                full_source_text: text,
+                byte_offset: 0,
+                line: 0,
+                column: 0
+            }
+        ));
+        assert_eq!(tokens[1], Token::LIT_RawString(
+            SourceSpan {
+                span: r#"''"Suddenly there's "'a raw string!"''"#,
+                full_source_text: text,
+                byte_offset: 3,
+                line: 0,
+                column: 3
+            }
+        ));
+        assert_eq!(tokens[2], Token::Identifier(
+            SourceSpan {
+                span: "hello",
+                full_source_text: text,
+                byte_offset: 41,
+                line: 0,
+                column: 41
+            }
+        ));
+        assert_eq!(tokens[3], Token::EOF);
+    }
 }
