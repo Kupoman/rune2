@@ -54,5 +54,7 @@ fn main() {
     let tokens = lex_str(&text[..]);
     
     // Print tokens
-    //println!("{:?}", tokens);
+    for t in tokens {
+        println!("{}", t);
+    }
 }
