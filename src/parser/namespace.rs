@@ -1,5 +1,6 @@
+use super::declaration::Declaration;
+
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
-pub enum Namespace<'a> {
-    Foo,
-    Bar(&'a str),
+pub struct Namespace<'a> {
+    decls: &'a [Declaration<'a>],
 }

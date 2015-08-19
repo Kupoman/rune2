@@ -1,12 +1,12 @@
 #![allow(dead_code)]
 
-use std::collections::HashMap;
+use std::collections::{VecDeque, HashMap};
 use regex::Regex;
 use source_span::SourceSpan;
 use token::{Token, TokenType};
 
 /// Lexes a string slice into an vector of tokens
-pub fn lex_str<'a>(text: &'a str) -> Vec<Token<'a>> {
+pub fn lex_str<'a>(text: &'a str) -> VecDeque<Token<'a>> {
     Lexer::new(text).lex()
 }
 
@@ -17,7 +17,7 @@ struct Lexer<'a> {
     current_line: u32,
     current_column: u32,
     current_byte_offset: usize,
-    tokens: Vec<Token<'a>>,
+    tokens: VecDeque<Token<'a>>,
 }
 
 impl<'a> Lexer<'a> {
@@ -28,13 +28,13 @@ impl<'a> Lexer<'a> {
             current_line: 0,
             current_column: 0,
             current_byte_offset: 0,
-            tokens: vec!(),
+            tokens: VecDeque::new(),
         }
     }
     
     
     // Lexing consumes the lexer
-    fn lex(mut self) -> Vec<Token<'a>> {
+    fn lex(mut self) -> VecDeque<Token<'a>> {
         //==================================
         // Build our regexes
         // TODO: can we do this outside of the lex function, perhaps
@@ -88,7 +88,7 @@ impl<'a> Lexer<'a> {
             
             // End of file
             if self.remaining_text.len() == 0 {
-                self.tokens.push(Token {
+                self.tokens.push_back(Token {
                     token_type: TokenType::EOF,
                     source: SourceSpan {
                         span: self.remaining_text,
@@ -104,7 +104,7 @@ impl<'a> Lexer<'a> {
             // Newline
             else if let Some((0, n)) = re_newline.find(self.remaining_text) {
                 bytes_consumed = n;
-                self.tokens.push(Token {
+                self.tokens.push_back(Token {
                     token_type: TokenType::NewLine,
                     source: SourceSpan {
                         span: &self.remaining_text[0..n],
@@ -126,7 +126,7 @@ impl<'a> Lexer<'a> {
             // Doc comment
             else if let Some((0, n)) = re_doc_comment.find(self.remaining_text) {
                 bytes_consumed = n;
-                self.tokens.push(Token {
+                self.tokens.push_back(Token {
                     token_type: TokenType::DocComment,
                     source: SourceSpan {
                         span: &self.remaining_text[0..n],
@@ -151,7 +151,7 @@ impl<'a> Lexer<'a> {
             // Punctuation
             else if let Some(tt) = single_byte_tokens.get(&self.remaining_text[0..1]) {
                 bytes_consumed = 1;
-                self.tokens.push(Token {
+                self.tokens.push_back(Token {
                     token_type: *tt,
                     source: SourceSpan {
                         span: &self.remaining_text[0..1],
@@ -166,7 +166,7 @@ impl<'a> Lexer<'a> {
             // Operators
             else if let Some((0, n)) = re_operator.find(self.remaining_text) {
                 bytes_consumed = n;
-                self.tokens.push(Token {
+                self.tokens.push_back(Token {
                     token_type: TokenType::Operator,
                     source: SourceSpan {
                         span: &self.remaining_text[0..n],
@@ -181,7 +181,7 @@ impl<'a> Lexer<'a> {
             // Real number literal
             else if let Some((0, n)) = re_real.find(self.remaining_text) {
                 bytes_consumed = n;
-                self.tokens.push(Token {
+                self.tokens.push_back(Token {
                     token_type: TokenType::LIT_Real,
                     source: SourceSpan {
                         span: &self.remaining_text[0..n],
@@ -196,7 +196,7 @@ impl<'a> Lexer<'a> {
             // Integer literal
             else if let Some((0, n)) = re_int.find(self.remaining_text) {
                 bytes_consumed = n;
-                self.tokens.push(Token {
+                self.tokens.push_back(Token {
                     token_type: TokenType::LIT_Int,
                     source: SourceSpan {
                         span: &self.remaining_text[0..n],
@@ -212,7 +212,7 @@ impl<'a> Lexer<'a> {
             else if self.remaining_text.starts_with("\"") {
                 let (newline_count, trailing_txt, txt) = self.lex_string_literal();
                 bytes_consumed = txt.len();
-                self.tokens.push(Token {
+                self.tokens.push_back(Token {
                     token_type: TokenType::LIT_String,
                     source: SourceSpan {
                         span: &self.remaining_text[0..bytes_consumed],
@@ -235,7 +235,7 @@ impl<'a> Lexer<'a> {
             else if let Some((0, _)) = re_raw_string_start.find(self.remaining_text) {
                 let (newline_count, trailing_txt, txt) = self.lex_raw_string_literal();
                 bytes_consumed = txt.len();
-                self.tokens.push(Token {
+                self.tokens.push_back(Token {
                     token_type: TokenType::LIT_RawString,
                     source: SourceSpan {
                         span: &self.remaining_text[0..bytes_consumed],
@@ -291,7 +291,7 @@ impl<'a> Lexer<'a> {
                     _ => TokenType::Identifier,
                 };
                 
-                self.tokens.push(Token {
+                self.tokens.push_back(Token {
                     token_type: tt,
                     source: SourceSpan {
                         span: &self.remaining_text[0..n],
@@ -307,7 +307,7 @@ impl<'a> Lexer<'a> {
             else if let Some((0, n)) = re_ident_generic.find(self.remaining_text) {
                 bytes_consumed = n;
                 
-                self.tokens.push(Token {
+                self.tokens.push_back(Token {
                     token_type: TokenType::IdentifierGeneric,
                     source: SourceSpan {
                         span: &self.remaining_text[0..n],

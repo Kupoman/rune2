@@ -1,4 +1,7 @@
+mod declaration;
 mod namespace;
+mod lit_integer;
+
 
 use token::{Token, TokenType};
 use self::namespace::Namespace;
