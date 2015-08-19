@@ -3,7 +3,7 @@ mod namespace;
 mod lit_integer;
 
 
-use token::{Token, TokenType};
+use token::Token;
 use self::namespace::Namespace;
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]

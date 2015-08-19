@@ -4,85 +4,78 @@
 use source_span::SourceSpan;
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
-pub struct Token<'a> {
-    pub token_type: TokenType,
-    pub source: SourceSpan<'a>,
-}
-
-
-#[derive(Eq, PartialEq, Copy, Clone, Debug)]
-pub enum TokenType {
+pub enum Token<'a> {
     // Catch-all
-    Unknown,
+    Unknown(SourceSpan<'a>),
     
     // Catch-all for valid but as-of-yet unused symbols
-    Reserved,
+    Reserved(SourceSpan<'a>),
 
     // User-defined symbols
-    Identifier,
-    IdentifierGeneric,
-    Operator,
+    Identifier(SourceSpan<'a>),
+    IdentifierGeneric(SourceSpan<'a>),
+    Operator(SourceSpan<'a>),
 
     // Literals
-    LIT_Int,
-    LIT_Real,
-    LIT_String,
-    LIT_RawString,
+    LIT_Int(SourceSpan<'a>),
+    LIT_Real(SourceSpan<'a>),
+    LIT_String(SourceSpan<'a>),
+    LIT_RawString(SourceSpan<'a>),
 
     // Documentation string
-    DocComment,
+    DocComment(SourceSpan<'a>),
 
     // Punctuation
-    NewLine,
-    LParen,
-    RParen,
-    LSquare,
-    RSquare,
-    LCurly,
-    RCurly,
-    Comma,
-    Colon,
-    At,
-    Period,
-    BackTick,
-    Dollar,
+    NewLine(SourceSpan<'a>),
+    LParen(SourceSpan<'a>),
+    RParen(SourceSpan<'a>),
+    LSquare(SourceSpan<'a>),
+    RSquare(SourceSpan<'a>),
+    LCurly(SourceSpan<'a>),
+    RCurly(SourceSpan<'a>),
+    Comma(SourceSpan<'a>),
+    Colon(SourceSpan<'a>),
+    At(SourceSpan<'a>),
+    Period(SourceSpan<'a>),
+    BackTick(SourceSpan<'a>),
+    Dollar(SourceSpan<'a>),
 
     // Keywords
-    KEY_Namespace,
-    KEY_Pub,
-    KEY_Unsafe,
+    KEY_Namespace(SourceSpan<'a>),
+    KEY_Pub(SourceSpan<'a>),
+    KEY_Unsafe(SourceSpan<'a>),
 
-    KEY_Const,
-    KEY_Val,
-    KEY_Var,
+    KEY_Const(SourceSpan<'a>),
+    KEY_Val(SourceSpan<'a>),
+    KEY_Var(SourceSpan<'a>),
 
-    KEY_Mut,
-    KEY_Ref,
+    KEY_Mut(SourceSpan<'a>),
+    KEY_Ref(SourceSpan<'a>),
 
-    KEY_Fn,
+    KEY_Fn(SourceSpan<'a>),
 
-    KEY_Struct,
-    KEY_Enum,
-    KEY_Union,
+    KEY_Struct(SourceSpan<'a>),
+    KEY_Enum(SourceSpan<'a>),
+    KEY_Union(SourceSpan<'a>),
 
-    KEY_Trait,
-    KEY_Is,
+    KEY_Trait(SourceSpan<'a>),
+    KEY_Is(SourceSpan<'a>),
 
-    KEY_If,
-    KEY_Else,
-    KEY_Loop,
-    KEY_While,
-    KEY_Until,
-    KEY_For,
-    KEY_In,
-    KEY_Break,
-    KEY_Continue,
-    KEY_Return,
+    KEY_If(SourceSpan<'a>),
+    KEY_Else(SourceSpan<'a>),
+    KEY_Loop(SourceSpan<'a>),
+    KEY_While(SourceSpan<'a>),
+    KEY_Until(SourceSpan<'a>),
+    KEY_For(SourceSpan<'a>),
+    KEY_In(SourceSpan<'a>),
+    KEY_Break(SourceSpan<'a>),
+    KEY_Continue(SourceSpan<'a>),
+    KEY_Return(SourceSpan<'a>),
 
-    KEY_As,
+    KEY_As(SourceSpan<'a>),
 
-    KEY_Alias,
-    KEY_Type,
+    KEY_Alias(SourceSpan<'a>),
+    KEY_Type(SourceSpan<'a>),
 
     // EOF
     EOF,

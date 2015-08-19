@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use super::super::source_span::SourceSpan;
 use super::super::token::Token;
 
@@ -7,11 +8,18 @@ pub struct LitInteger<'a> {
     pub source: SourceSpan<'a>,
 }
 
-//pub fn parse_lit_integer<'a>(tokens: &mut Vec<Token<'a>>) -> Option<LitInteger<'a>> {
-//    match 
-//    LitInteger {
-//        text: 
-//    }
-//}
+pub fn parse_lit_integer<'a>(tokens: &mut VecDeque<Token<'a>>) -> Option<LitInteger<'a>> {
+    // Attempt to parse an integer literal
+    if let Some(&Token::LIT_Int(s)) = tokens.get(0) {
+        tokens.pop_front();
+        return Some(LitInteger {
+            text: s.span,
+            source: s,
+        });
+    }
+    else {
+        return None;
+    }
+}
 
 
