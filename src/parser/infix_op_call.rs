@@ -3,18 +3,22 @@ use super::super::source_span::SourceSpan;
 use super::super::token::Token;
 use super::{ParseResult, ParseError};
 
+use super::lit_integer{LitInteger, parse_lit_integer};
+
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
-pub struct LitInteger<'a> {
+pub struct InfixOpCall<'a> {
     pub text: &'a str,
     pub source: SourceSpan<'a>,
 }
 
+
 //=============================
-pub fn parse_lit_integer<'a>(tokens: &'a [Token<'a>]) -> ParseResult<'a, LitInteger<'a>> {
-    // Attempt to parse an integer literal
-    if let Some(&Token::LIT_Int(s)) = tokens.get(0) {
+pub fn parse_infix_op_call<'a>(tokens: &[Token<'a>]) -> ParseResult<'a, LitReal<'a>> {
+    // Attempt to parse an real literal
+    if let Some(&Token::LIT_Real(s)) = tokens.get(0) {
+        tokens.pop_front();
         return Ok((
-            LitInteger {
+            LitReal {
                 text: s.span,
                 source: s,
             },
@@ -25,7 +29,7 @@ pub fn parse_lit_integer<'a>(tokens: &'a [Token<'a>]) -> ParseResult<'a, LitInte
     else {
         let ss = if let Some(token) = tokens.get(0) { token.source_span() } else { None };
         return Err(ParseError {
-            message: "Expected integer literal.".to_string(),
+            message: "Expected real number literal.".to_string(),
             source: ss,
         });
     }

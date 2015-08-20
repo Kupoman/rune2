@@ -4,17 +4,17 @@ use super::super::token::Token;
 use super::{ParseResult, ParseError};
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
-pub struct LitInteger<'a> {
+pub struct LitReal<'a> {
     pub text: &'a str,
     pub source: SourceSpan<'a>,
 }
 
 //=============================
-pub fn parse_lit_integer<'a>(tokens: &'a [Token<'a>]) -> ParseResult<'a, LitInteger<'a>> {
-    // Attempt to parse an integer literal
-    if let Some(&Token::LIT_Int(s)) = tokens.get(0) {
+pub fn parse_lit_real<'a>(tokens: &'a [Token<'a>]) -> ParseResult<'a, LitReal<'a>> {
+    // Attempt to parse an real literal
+    if let Some(&Token::LIT_Real(s)) = tokens.get(0) {
         return Ok((
-            LitInteger {
+            LitReal {
                 text: s.span,
                 source: s,
             },
@@ -25,7 +25,7 @@ pub fn parse_lit_integer<'a>(tokens: &'a [Token<'a>]) -> ParseResult<'a, LitInte
     else {
         let ss = if let Some(token) = tokens.get(0) { token.source_span() } else { None };
         return Err(ParseError {
-            message: "Expected integer literal.".to_string(),
+            message: "Expected real number literal.".to_string(),
             source: ss,
         });
     }

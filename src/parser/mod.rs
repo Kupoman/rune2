@@ -2,6 +2,7 @@ mod declaration;
 mod expression;
 mod namespace;
 mod lit_integer;
+mod lit_real;
 
 use std::fmt::{Display, Formatter, Error};
 use source_span::SourceSpan;
@@ -36,4 +37,4 @@ impl<'a> Display for ParseError<'a> {
 }
 
 // Alias for a result using a ParseError
-pub type ParseResult<'a, T> = Result<T, ParseError<'a>>;
+pub type ParseResult<'a, T> = Result<(T, &'a[Token<'a>]), ParseError<'a>>;
