@@ -1,0 +1,16 @@
+<namespace> ::= "namespace" "(" <declarations> ")"
+
+<declarations> ::= <declaration> | <declaration> <nl> <declarations>
+<declaration> ::= <type_decl> | <const_decl> | <val_decl> | <var_decl>
+
+<type_decl> ::= "type" <identifier> <type_ascr>
+<type_expr> ::= <type_literal> | <identifier>
+<type_ascr> ::= ":" <type_expr>
+
+<const_decl> ::= "const" <thing_decl>
+<val_decl> ::= "val" <thing_decl>
+<var_decl> ::= "var" <thing_decl>
+
+<thing_decl> ::= <identifier> | <identifier> <type_ascr> | <identifier> <initializer> | <identifier> <type_ascr> <initializer>
+
+<initializer> ::= "=" <expression>

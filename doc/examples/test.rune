@@ -1,0 +1,28 @@
+const c: i32 = 456
+var a: i32 #= 31
+#var bar: i8 = c
+
+const foo = fn [x: i32, y: i32] -> i32 (
+    return x + y
+)
+
+type Yar: struct {
+	x: i32,
+	y: i32,
+	z: i32,
+}
+
+#type Meter: f32
+
+const main = fn [] -> i32 (
+    #print["%d, %d, %d\n", a+b, b+c, foo[a, b]]
+	val d: i32 = 42
+	val ptr: @i32 = @d
+	val mem: @i32 = cmalloc[4]
+	val yar: @Yar = cmalloc[12]
+	$mem = 41
+	val b: i32 = $mem
+	cfree[mem]
+	cfree[yar]
+	return foo[$ptr, b]
+)
