@@ -16,6 +16,13 @@ pub enum ParseTree<'a> {
 }
 
 
+//=========================
+/// A trait for nodes in a parse tree that can be parsed from a token slice.
+pub trait Parseable<'a> {
+    fn parse(tokens: &'a [Token<'a>]) -> ParseResult<'a, Self>;
+}
+
+
 //=====================================
 // A parse error.
 #[derive(Clone, Debug)]
